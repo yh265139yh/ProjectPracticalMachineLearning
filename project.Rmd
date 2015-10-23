@@ -1,0 +1,124 @@
+<h1>Prediction Project - Practical Machine Learning</h1>
+
+========================================================
+<h4>1. Background</h4>
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+<h4>2.Processing Data</h4>
+
+Downloading two datasets which given by the project.
+and the data are coming from these two url
+train data: "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+test  data: "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+```{r}
+#first downloading data and save it on your working dir
+#then load them 
+setwd("C:/Users/Administrator/Documents")
+trainingData    <- read.csv("pml-training.csv", header = TRUE)
+testingData     <- read.csv('pml-testing.csv')
+```
+
+Also, loading the libraries which are needed in this project
+
+```{r}
+#loading libraries
+library(caret)
+library(parallel)
+library(randomForest)
+library(rpart) 
+set.seed(1234)
+```
+
+have a look at the training data, it has 19622 observations, 160 feartures 
+```{r}
+dim(trainingData)
+dim(testingData)
+```
+
+And its distribution
+```{r}
+table(trainingData$classe)
+```
+
+<h4>3.Cleaning Data</h4>
+
+a. remove the columns which have missing values
+
+```{r}
+trainingData <-trainingData[,colSums(is.na(trainingData)) == 0]
+testingData  <-testingData[,colSums(is.na(testingData)) == 0]
+
+nearZeroC    <- nearZeroVar(trainingData, saveMetrics = TRUE)
+trainingData <- trainingData[, nearZeroC$nzv==FALSE]
+nearZeroC    <- nearZeroVar(testingData, saveMetrics = TRUE)
+testingData  <- testingData[, nearZeroC$nzv==FALSE]
+```
+
+b. removing the columns which are irrelevant this assignment
+
+```{r}
+trainingData   <-trainingData[,-c(1:7)]
+testingData    <-testingData[,-c(1:7)]
+```
+
+<h4>4.Spliting Data into training and test sets</h4>
+
+Split the data: 70% for training, 30% for testing
+
+```{r}
+inTrain <- createDataPartition(y = trainingData$classe, list = FALSE, p=0.7)
+trainingPartition  <- trainingData[inTrain,]
+testingPartition   <- trainingData[-inTrain,]
+```
+
+<h4>5.Training data using models</h4>
+
+First, use the random Forest model
+```{r}
+modelRandomForest<- randomForest(classe ~. , data=trainingPartition, method="class")
+# Predicting:
+predictionRandomForest <- predict(modelRandomForest, testingPartition, type = "class")
+# Test results：
+confusionMatrix(predictionRandomForest, testingPartition$classe)
+```
+
+Then, use the Decision Tree
+```{r}
+modelDecisionTree <- rpart(classe ~. , data=trainingPartition, method="class")
+# Predicting:
+predictionDecisionTree <- predict(modelDecisionTree, testingPartition, type = "class")
+# Test results:
+confusionMatrix(predictionDecisionTree, testingPartition$classe)
+```
+
+<h4>5.Studying Results of the Prediction: Accuracy</h4>
+
+After using the testing data to make prediction with the models calculated and showing the confusion matrix for these two models; 
+
+The accuracy of the Random forest Model and Decision Tree model are 0.9956 and 0.6921. Therefore, the random forest model is the most accurate model to be optimized with cross validation. 
+
+This was the expected output since random forest was the most complex technique evaluated because it combines a number of classifiers.
+
+<h4>6.Submission part of the Project</h4>
+
+```{r}
+# using Random Forest algorithm
+predictSet <- predict(modelRandomForest, testingData , type="class")
+predictSet
+
+# Write files for submission
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predictSet)
+```
+
+
